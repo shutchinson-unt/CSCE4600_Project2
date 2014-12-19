@@ -1,8 +1,7 @@
-#include <unistd.h>
-#include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <time.h>
+
 
 #define PID_MIN       100
 #define PID_MAX       999
@@ -108,13 +107,12 @@ static size_t random_size(void)
     return (size_t) (SIZE_MIN + delta);
 }
 
-
 static void draw_process_table(const Process *processes)
 {
     printf("\033[H\033[2J");
     printf(" MEMORY:    %zu used (%0.3lf%%), %zu free, %zu total\n",
            MEMORY_TOTAL - memory,
-           (double) ((double) (MEMORY_TOTAL - memory) / (double) MEMORY_TOTAL) * 100,
+           ((double) (MEMORY_TOTAL - memory) / (double) MEMORY_TOTAL) * 100,
            memory,
            MEMORY_TOTAL);
     printf(" PROCESSES: %zu active, %zu ready, %zu complete, %zu total\n",
@@ -166,7 +164,7 @@ int main(int argc, char **argv)
     unsigned int frame_count = 0;
 
     while (1) {
-        // check if all processes are complete
+        // count the total number of running and complete processes
         running_count = 0;
         complete_count = 0;
         for (size_t i = 0; i < PROCESS_COUNT; ++i) {
@@ -177,6 +175,8 @@ int main(int argc, char **argv)
                 ++running_count;
             }
         }
+
+        // if we've all processes have completed, exit the program
         if (complete_count == PROCESS_COUNT) {
             draw_process_table(processes);
             break;
@@ -196,8 +196,10 @@ int main(int argc, char **argv)
                     processes[i].cycles_remaining = processes[i].cycles;
                     processes[i].data = malloc(processes[i].size);
                     if (processes[i].data == NULL) {
-                        printf("Error: Failed to allocate memory for process %u\n",
+                        printf("Error: Failed to allocate "
+                               "memory for process %u\n",
                                processes[i].pid);
+                        break;
                     }
                 }
             }
