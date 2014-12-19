@@ -1,3 +1,5 @@
+#include "simulator.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -10,23 +12,15 @@
 
 #define CYCLES_MIN    10
 #define CYCLES_MAX    1000
+#define CYCLES_MEAN   505
 // #define CYCLES_MIN    1000
 // #define CYCLES_MAX    11000
 
-#define SIZE_MIN      500000
-#define SIZE_MAX      2500000
+#define SIZE_MIN      100000
+#define SIZE_MAX      300000
+#define SIZE_MEAN     200000
 
 #define PROCESS_COUNT 50
-
-#define MEMORY_TOTAL  10000000
-// #define MEMORY_TOTAL  10000000/2
-// #define MEMORY_TOTAL  10000000/10
-
-
-static size_t memory = MEMORY_TOTAL;
-
-static size_t running_count = 0;
-static size_t complete_count = 0;
 
 
 typedef enum PROCESS_STATE {
@@ -43,6 +37,15 @@ typedef struct Process {
 } Process;
 
 
+static size_t memory = 0;
+static size_t total_memory = 0;
+
+static size_t running_count = 0;
+static size_t complete_count = 0;
+
+static Process processes[PROCESS_COUNT] = {{ 0, 0, 0, 0, PROCESS_READY, NULL }};
+
+
 static pid_t random_pid(void)
 {
     unsigned long delta;
@@ -50,13 +53,13 @@ static pid_t random_pid(void)
     return (pid_t) (PID_MIN + delta);
 }
 
-static pid_t unique_pid(const Process *processes)
+static pid_t unique_pid(void)
 {
     pid_t pid = random_pid();
 
     for (int i = 0; i < PROCESS_COUNT; ++i) {
         if (processes[i].pid == pid) {
-            return unique_pid(processes);
+            return unique_pid();
         }
     }
 
@@ -65,32 +68,22 @@ static pid_t unique_pid(const Process *processes)
 
 static size_t random_cycles(void)
 {
-    // unsigned long delta;
-    // delta = random_range(CYCLES_MAX - CYCLES_MIN);
-    // return (size_t) (CYCLES_MIN + delta);
-
-    // return (size_t) SD(50, 550, 300, 'c', PROCESS_COUNT);
-    return (size_t) SD(CYCLES_MIN, CYCLES_MAX, 505, 'c', PROCESS_COUNT);
+    return (size_t) SD(CYCLES_MIN, CYCLES_MAX, CYCLES_MEAN, 'c', PROCESS_COUNT);
 }
 
 static size_t random_size(void)
 {
-    // unsigned long delta;
-    // delta = random_range(SIZE_MAX - SIZE_MIN);
-    // return (size_t) (SIZE_MIN + delta);
-
-    return (size_t) SD(100000, 300000, 200000, 'm', PROCESS_COUNT);
-    // return (size_t) SD(250000, 700000, 450000, 'm', PROCESS_COUNT);
+    return (size_t) SD(SIZE_MIN, SIZE_MAX, SIZE_MEAN, 'm', PROCESS_COUNT);
 }
 
-static void draw_process_table(const Process *processes)
+static void draw_process_table(void)
 {
     printf("\033[H\033[2J");
     printf(" MEMORY:    %zu used (%0.3lf%%), %zu free, %zu total\n",
-           MEMORY_TOTAL - memory,
-           ((double) (MEMORY_TOTAL - memory) / (double) MEMORY_TOTAL) * 100,
+           total_memory - memory,
+           ((double) (total_memory - memory) / (double) total_memory) * 100,
            memory,
-           MEMORY_TOTAL);
+           total_memory);
     printf(" PROCESSES: %zu active, %zu ready, %zu complete, %zu total\n",
            running_count,
            PROCESS_COUNT - running_count - complete_count,
@@ -113,31 +106,42 @@ static void draw_process_table(const Process *processes)
 }
 
 
-int main(int argc, char **argv)
+void Simulator_run(size_t initial_memory)
 {
-    (void) argc;
-    (void) argv;
-
+    // seed pseudo-random number generator
     seed_rand();
 
-    printf("START SIZE: %zu\n", memory);
+    // setup non-reentrant variables for Standard Deviation,
+    // which allows Simulator_run to be fully reentrant
+    InitSD();
 
-    Process processes[PROCESS_COUNT] = {{ 0, 0, 0, 0, PROCESS_READY, NULL }};
-
-    for (int i = 0; i < PROCESS_COUNT; ++i) {
-        processes[i].pid = unique_pid(processes);
+    for (size_t i = 0; i < PROCESS_COUNT; ++i) {
+        // randomize pid, cycles, and memory size for each process
+        processes[i].pid = unique_pid();
         processes[i].cycles = random_cycles();
         processes[i].size = random_size();
+
+        // set process state to ready,
+        // which allows Simulator_run to be fully reentrant
+        processes[i].state = PROCESS_READY;
+
+        // DEBUG, REMOVE BEFORE FINAL
         printf("PID:    %u\n", processes[i].pid);
         printf("CYCLES: %u\n", processes[i].cycles);
         printf("SIZE:   %u\n\n", processes[i].size);
     }
 
-    // disable cursor
-    printf("\033[?25l");
+    memory = initial_memory;
+    total_memory = initial_memory;
 
     unsigned int timer = 0;
     unsigned int frame_count = 0;
+
+    // DEBUG, REMOVE BEFORE FINAL
+    printf("START SIZE: %zu\n\n", memory);
+
+    // disable cursor (improves flickering substantially)
+    printf("\033[?25l");
 
     while (1) {
         // count the total number of running and complete processes
@@ -154,11 +158,11 @@ int main(int argc, char **argv)
 
         // if we've all processes have completed, exit the program
         if (complete_count == PROCESS_COUNT) {
-            draw_process_table(processes);
+            draw_process_table();
             break;
         }
 
-        // every 50 cycles, reset timer and attempt to run ready processes
+        // every 50 cycles, attempt to start ready processes
         if (timer == 49) {
             timer = 0;
 
@@ -191,6 +195,12 @@ int main(int argc, char **argv)
                         free(processes[i].data);
                         processes[i].data = NULL;
                     }
+                    else {
+                        printf("Error: Failed to de-allocate "
+                               "memory for process %u\n",
+                               processes[i].pid);
+                        break;
+                    }
                 }
                 else {
                     --processes[i].cycles_remaining;
@@ -201,7 +211,7 @@ int main(int argc, char **argv)
         // print process table every 25 frames
         if (frame_count == 24) {
             frame_count = 0;
-            draw_process_table(processes);
+            draw_process_table();
         }
 
         // update counters and sleep 10 milliseconds
@@ -212,6 +222,4 @@ int main(int argc, char **argv)
 
     // re-enable cursor
     printf("\033[?25h");
-
-    return 0;
 }

@@ -3,13 +3,36 @@
 #include <stdlib.h>
 #include <time.h>
 
+static int process_sigma1 = 0;
+static int process_sigma2 = 0;
+static int process_sigma3 = 0;
+static int process_sigma4 = 0;
+static int process_sigma5 = 0;
+static int process_sigma6 = 0;
+static int process_sigma7 = 0;
+static int process_sigma8 = 0;
+
+static int cycle_Sigma1 = 0;
+static int cycle_Sigma2 = 0;
+static int cycle_Sigma3 = 0;
+static int cycle_Sigma4 = 0;
+static int cycle_Sigma5 = 0;
+static int cycle_Sigma6 = 0;
+static int cycle_Sigma7 = 0;
+static int cycle_Sigma8 = 0;
+
+static double random_double(const double min, const double max)
+{
+    double random = (double) rand() / RAND_MAX;
+    return min + random * (max - min);
+}
 
 void seed_rand(void)
 {
     srand((unsigned int) time(NULL));
 }
 
-unsigned long random_range(long max)
+unsigned long random_range(const long max)
 {
     unsigned long bin_count, rand_count;
     unsigned long bin_size;
@@ -29,17 +52,32 @@ unsigned long random_range(long max)
     return (unsigned long) r / bin_size;
 }
 
-double random_double(double min, double max)
+void InitSD(void)
 {
-    double f = (double) rand() / RAND_MAX;
-    return min + f * (max - min);
+    process_sigma1 = 0;
+    process_sigma2 = 0;
+    process_sigma3 = 0;
+    process_sigma4 = 0;
+    process_sigma5 = 0;
+    process_sigma6 = 0;
+    process_sigma7 = 0;
+    process_sigma8 = 0;
+
+    cycle_Sigma1 = 0;
+    cycle_Sigma2 = 0;
+    cycle_Sigma3 = 0;
+    cycle_Sigma4 = 0;
+    cycle_Sigma5 = 0;
+    cycle_Sigma6 = 0;
+    cycle_Sigma7 = 0;
+    cycle_Sigma8 = 0;
 }
 
-double SD(unsigned int min,
-          unsigned int max,
-          unsigned int mean,
-          char unit,
-          int k)
+double SD(const unsigned int min,
+          const unsigned int max,
+          const unsigned int mean,
+          const char unit,
+          const int k)
 {
     unsigned int sigma = (2 * mean - 2 * min) / 8;   /*create sigma*/
 
@@ -53,23 +91,14 @@ double SD(unsigned int min,
     unsigned int s7 = mean + 3 * sigma;
     unsigned int s8 = max;
 
-    double t1 = k * 0.002;   /*.2% Bell Curve*/
-    double t2 = k * 0.021;   /*2.1% Bell Curve*/
-    double t3 = k * 0.136;   /*13.6% Bell Curve*/
-    double t4 = k * 0.341;   /*34.1% Bell Curve*/
+    double t1 = k * 0.002;   /*  0.2% Bell Curve */
+    double t2 = k * 0.021;   /*  2.1% Bell Curve */
+    double t3 = k * 0.136;   /* 13.6% Bell Curve */
+    double t4 = k * 0.341;   /* 34.1% Bell Curve */
 
     double n = random_double(min, max);  /*Generate number between min and max*/
 
     if (unit == 'm')  {   /*Memory*/
-        static int process_sigma1 = 0;
-        static int process_sigma2 = 0;
-        static int process_sigma3 = 0;
-        static int process_sigma4 = 0;
-        static int process_sigma5 = 0;
-        static int process_sigma6 = 0;
-        static int process_sigma7 = 0;
-        static int process_sigma8 = 0;
-
         if (n >= s0 && n < s1 && process_sigma1 < t1)  {
             process_sigma1 += 1;
             return n;
@@ -107,15 +136,6 @@ double SD(unsigned int min,
         }
     }
     else if (unit == 'c')  {   /*Cycle*/
-        static int cycle_Sigma1 = 0;
-        static int cycle_Sigma2 = 0;
-        static int cycle_Sigma3 = 0;
-        static int cycle_Sigma4 = 0;
-        static int cycle_Sigma5 = 0;
-        static int cycle_Sigma6 = 0;
-        static int cycle_Sigma7 = 0;
-        static int cycle_Sigma8 = 0;
-
         if (n >= s0 && n < s1 && cycle_Sigma1 < t1)  {
             cycle_Sigma1 += 1;
             return n;
