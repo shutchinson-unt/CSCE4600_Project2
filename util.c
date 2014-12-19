@@ -35,7 +35,11 @@ double random_double(double min, double max)
     return min + f * (max - min);
 }
 
-double SD(unsigned int min, unsigned int max, unsigned int mean, char unit, int k)
+double SD(unsigned int min,
+          unsigned int max,
+          unsigned int mean,
+          char unit,
+          int k)
 {
     unsigned int sigma = (2 * mean - 2 * min) / 8;   /*create sigma*/
 
@@ -54,8 +58,7 @@ double SD(unsigned int min, unsigned int max, unsigned int mean, char unit, int 
     double t3 = k * 0.136;   /*13.6% Bell Curve*/
     double t4 = k * 0.341;   /*34.1% Bell Curve*/
 
-    // double n =  rand() % (max - min) + min;  /*Generate number between min and max*/
-    double n = random_double(min, max);
+    double n = random_double(min, max);  /*Generate number between min and max*/
 
     if (unit == 'm')  {   /*Memory*/
         static int process_sigma1 = 0;
