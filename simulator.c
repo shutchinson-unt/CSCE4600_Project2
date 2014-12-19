@@ -10,11 +10,12 @@
 #define PID_MIN       100
 #define PID_MAX       999
 
-#define CYCLES_MIN    10
-#define CYCLES_MAX    1000
-#define CYCLES_MEAN   505
+#define CYCLES_MIN    50
+#define CYCLES_MAX    550
+#define CYCLES_MEAN   300
 // #define CYCLES_MIN    1000
 // #define CYCLES_MAX    11000
+// #define CYCLES_MEAN   6000
 
 #define SIZE_MIN      100000
 #define SIZE_MAX      300000
@@ -96,6 +97,7 @@ static void draw_process_table(void)
         if (processes[i].state == PROCESS_RUNNING) {
             printf(" %u    ", processes[i].pid);
             for (size_t j = 0; j < processes[i].cycles_remaining; ++j) {
+                // if ((j % 200) == 0) {
                 if ((j % 25) == 0) {
                     printf("|");
                 }
@@ -105,8 +107,7 @@ static void draw_process_table(void)
     }
 }
 
-
-void Simulator_run(size_t initial_memory)
+void Simulator_run(size_t initial_memory, int use_custom_allocator)
 {
     // seed pseudo-random number generator
     seed_rand();
@@ -174,7 +175,14 @@ void Simulator_run(size_t initial_memory)
                     processes[i].state = PROCESS_RUNNING;
                     memory -= processes[i].size;
                     processes[i].cycles_remaining = processes[i].cycles;
-                    processes[i].data = malloc(processes[i].size);
+
+                    if (use_custom_allocator) {
+
+                    }
+                    else {
+                        processes[i].data = malloc(processes[i].size);
+                    }
+
                     if (processes[i].data == NULL) {
                         printf("Error: Failed to allocate "
                                "memory for process %u\n",
@@ -192,8 +200,13 @@ void Simulator_run(size_t initial_memory)
                     processes[i].state = PROCESS_COMPLETE;
                     memory += processes[i].size;
                     if (processes[i].data != NULL) {
-                        free(processes[i].data);
-                        processes[i].data = NULL;
+                        if (use_custom_allocator) {
+
+                        }
+                        else {
+                            free(processes[i].data);
+                            processes[i].data = NULL;
+                        }
                     }
                     else {
                         printf("Error: Failed to de-allocate "
