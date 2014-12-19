@@ -37,6 +37,7 @@ typedef struct Process {
     size_t cycles, size;
     PROCESS_STATE state;
     size_t cycles_remaining;
+    char *data;
 } Process;
 
 
@@ -149,8 +150,6 @@ int main(int argc, char **argv)
 
     Process processes[PROCESS_COUNT] = {{ 0 }};
 
-    unsigned int timer = 0;
-
     for (int i = 0; i < PROCESS_COUNT; ++i) {
         processes[i].pid = unique_pid(processes);
         processes[i].cycles = random_cycles();
@@ -163,24 +162,29 @@ int main(int argc, char **argv)
     // disable cursor
     printf("\033[?25l");
 
-    int frame_count = 0;
+    unsigned int timer = 0;
+    unsigned int frame_count = 0;
+
     while (1) {
-        if ((timer % 50) == 0) {
-            // check if all processes are complete
-            running_count = 0;
-            complete_count = 0;
-            for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-                if (processes[i].state == PROCESS_COMPLETE) {
-                    ++complete_count;
-                }
-                else if (processes[i].state == PROCESS_RUNNING) {
-                    ++running_count;
-                }
+        // check if all processes are complete
+        running_count = 0;
+        complete_count = 0;
+        for (size_t i = 0; i < PROCESS_COUNT; ++i) {
+            if (processes[i].state == PROCESS_COMPLETE) {
+                ++complete_count;
             }
-            if (complete_count == PROCESS_COUNT) {
-                draw_process_table(processes);
-                break;
+            else if (processes[i].state == PROCESS_RUNNING) {
+                ++running_count;
             }
+        }
+        if (complete_count == PROCESS_COUNT) {
+            draw_process_table(processes);
+            break;
+        }
+
+        // every 50 cycles, reset timer and attempt to run ready processes
+        if (timer == 49) {
+            timer = 0;
 
             // set all ready processes that will fit in memory to running state
             for (size_t i = 0; i < PROCESS_COUNT; ++i) {
@@ -190,31 +194,40 @@ int main(int argc, char **argv)
                     processes[i].state = PROCESS_RUNNING;
                     memory -= processes[i].size;
                     processes[i].cycles_remaining = processes[i].cycles;
-                }
-            }
-
-            // update running processes
-            for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-                if (processes[i].state == PROCESS_RUNNING) {
-                    if (processes[i].cycles_remaining == 0) {
-                        processes[i].state = PROCESS_COMPLETE;
-                        memory += processes[i].size;
-                    }
-                    else {
-                        --processes[i].cycles_remaining;
+                    processes[i].data = malloc(processes[i].size);
+                    if (processes[i].data == NULL) {
+                        printf("Error: Failed to allocate memory for process %u\n",
+                               processes[i].pid);
                     }
                 }
             }
         }
 
-        // print process table
+        // update running processes
+        for (size_t i = 0; i < PROCESS_COUNT; ++i) {
+            if (processes[i].state == PROCESS_RUNNING) {
+                if (processes[i].cycles_remaining == 0) {
+                    processes[i].state = PROCESS_COMPLETE;
+                    memory += processes[i].size;
+                    if (processes[i].data != NULL) {
+                        free(processes[i].data);
+                        processes[i].data = NULL;
+                    }
+                }
+                else {
+                    --processes[i].cycles_remaining;
+                }
+            }
+        }
+
+        // print process table every 25 frames
         if (frame_count == 24) {
             frame_count = 0;
             draw_process_table(processes);
         }
 
-        // ++timer;
-        timer += 10;
+        // update counters and sleep 10 milliseconds
+        ++timer;
         ++frame_count;
         sleep_ms(10);
     }
