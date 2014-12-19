@@ -205,12 +205,12 @@ int main(int argc, char **argv)
                     }
                 }
             }
+        }
 
-            // print process table
-            if (frame_count == 25) {
-                frame_count = 0;
-                draw_process_table(processes);
-            }
+        // print process table
+        if (frame_count == 24) {
+            frame_count = 0;
+            draw_process_table(processes);
         }
 
         // ++timer;
