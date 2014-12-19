@@ -33,9 +33,8 @@ typedef enum PROCESS_STATE {
 
 typedef struct Process {
     pid_t pid;
-    size_t cycles, size;
+    size_t cycles, size, cycles_remaining;
     PROCESS_STATE state;
-    size_t cycles_remaining;
     char *data;
 } Process;
 
@@ -146,7 +145,7 @@ int main(int argc, char **argv)
 
     printf("START SIZE: %zu\n", memory);
 
-    Process processes[PROCESS_COUNT] = {{ 0 }};
+    Process processes[PROCESS_COUNT] = {{ 0, 0, 0, 0, PROCESS_READY, NULL }};
 
     for (int i = 0; i < PROCESS_COUNT; ++i) {
         processes[i].pid = unique_pid(processes);
