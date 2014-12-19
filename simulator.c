@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "util.h"
+#include "mymalloc.h"
 
 
 #define PID_MIN       100
@@ -177,7 +178,18 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                     processes[i].cycles_remaining = processes[i].cycles;
 
                     if (use_custom_allocator) {
-
+                        {
+                            char *data = my_malloc(processes[i].size);
+                            if (data == NULL) {
+                                printf("Error: Failed to allocate "
+                                       "memory for process %u\n",
+                                       processes[i].pid);
+                                break;
+                            }
+                            sleep_ms(20);
+                            my_free(data);
+                        }
+                        // processes[i].data = my_malloc(processes[i].size);
                     }
                     else {
                         processes[i].data = malloc(processes[i].size);
@@ -201,7 +213,8 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                     memory += processes[i].size;
                     if (processes[i].data != NULL) {
                         if (use_custom_allocator) {
-
+                            // my_free(processes[i].data);
+                            // processes[i].data = NULL;
                         }
                         else {
                             free(processes[i].data);
