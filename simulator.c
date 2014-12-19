@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "util.h"
+
 
 #define PID_MIN       100
 #define PID_MAX       999
@@ -17,6 +19,8 @@
 #define PROCESS_COUNT 50
 
 #define MEMORY_TOTAL  10000000
+// #define MEMORY_TOTAL  10000000/2
+// #define MEMORY_TOTAL  10000000/10
 
 
 static size_t memory = MEMORY_TOTAL;
@@ -38,39 +42,6 @@ typedef struct Process {
     char *data;
 } Process;
 
-
-static void sleep_ms(unsigned int milliseconds)
-{
-    time_t seconds = (int) (milliseconds / 1000);
-
-    milliseconds = milliseconds - ((unsigned int) seconds * 1000);
-
-    struct timespec req;
-    req.tv_sec = seconds;
-    req.tv_nsec = (int) milliseconds * 1000000L;
-
-    while (nanosleep(&req, &req) == -1);
-}
-
-static unsigned long random_range(long max)
-{
-    unsigned long bin_count, rand_count;
-    unsigned long bin_size;
-    unsigned long defect;
-
-    bin_count = (unsigned long) max + 1;
-    rand_count = (unsigned long) RAND_MAX + 1;
-    bin_size = rand_count / bin_count;
-    defect   = rand_count % bin_count;
-
-    long r;
-    do {
-        r = rand();
-    }
-    while (rand_count - defect <= (unsigned long) r);
-
-    return (unsigned long) r / bin_size;
-}
 
 static pid_t random_pid(void)
 {
@@ -94,16 +65,22 @@ static pid_t unique_pid(const Process *processes)
 
 static size_t random_cycles(void)
 {
-    unsigned long delta;
-    delta = random_range(CYCLES_MAX - CYCLES_MIN);
-    return (size_t) (CYCLES_MIN + delta);
+    // unsigned long delta;
+    // delta = random_range(CYCLES_MAX - CYCLES_MIN);
+    // return (size_t) (CYCLES_MIN + delta);
+
+    // return (size_t) SD(50, 550, 300, 'c', PROCESS_COUNT);
+    return (size_t) SD(CYCLES_MIN, CYCLES_MAX, 505, 'c', PROCESS_COUNT);
 }
 
 static size_t random_size(void)
 {
-    unsigned long delta;
-    delta = random_range(SIZE_MAX - SIZE_MIN);
-    return (size_t) (SIZE_MIN + delta);
+    // unsigned long delta;
+    // delta = random_range(SIZE_MAX - SIZE_MIN);
+    // return (size_t) (SIZE_MIN + delta);
+
+    return (size_t) SD(100000, 300000, 200000, 'm', PROCESS_COUNT);
+    // return (size_t) SD(250000, 700000, 450000, 'm', PROCESS_COUNT);
 }
 
 static void draw_process_table(const Process *processes)
@@ -141,7 +118,7 @@ int main(int argc, char **argv)
     (void) argc;
     (void) argv;
 
-    srand((unsigned int) time(NULL));
+    seed_rand();
 
     printf("START SIZE: %zu\n", memory);
 
