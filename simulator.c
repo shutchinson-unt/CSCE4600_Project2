@@ -1,9 +1,10 @@
+#include "simulator.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 
 #include "util.h"
-
 
 #define PID_MIN       100
 #define PID_MAX       999
@@ -23,10 +24,15 @@
 // #define MEMORY_TOTAL  10000000/10
 
 
-static size_t memory = MEMORY_TOTAL;
 
-static size_t running_count = 0;
-static size_t complete_count = 0;
+
+// static size_t memory = MEMORY_TOTAL;
+
+// static size_t running_count = 0;
+// static size_t complete_count = 0;
+
+
+
 
 
 typedef enum PROCESS_STATE {
@@ -35,12 +41,13 @@ typedef enum PROCESS_STATE {
     PROCESS_COMPLETE,
 } PROCESS_STATE;
 
-typedef struct Process {
+struct Process {
     pid_t pid;
     size_t cycles, size, cycles_remaining;
     PROCESS_STATE state;
     char *data;
-} Process;
+};
+
 
 
 static pid_t random_pid(void)
@@ -83,26 +90,26 @@ static size_t random_size(void)
     // return (size_t) SD(250000, 700000, 450000, 'm', PROCESS_COUNT);
 }
 
-static void draw_process_table(const Process *processes)
+static void draw_process_table(Simulator *simulator)
 {
     printf("\033[H\033[2J");
     printf(" MEMORY:    %zu used (%0.3lf%%), %zu free, %zu total\n",
-           MEMORY_TOTAL - memory,
-           ((double) (MEMORY_TOTAL - memory) / (double) MEMORY_TOTAL) * 100,
-           memory,
+           MEMORY_TOTAL - simulator->memory,
+           ((double) (MEMORY_TOTAL - simulator->memory) / (double) MEMORY_TOTAL) * 100,
+           simulator->memory,
            MEMORY_TOTAL);
     printf(" PROCESSES: %zu active, %zu ready, %zu complete, %zu total\n",
-           running_count,
-           PROCESS_COUNT - running_count - complete_count,
-           complete_count,
+           simulator->running_count,
+           PROCESS_COUNT - simulator->running_count - simulator->complete_count,
+           simulator->complete_count,
            PROCESS_COUNT);
     printf(" PID    CYCLES\n");
     printf("==================================================\n");
 
     for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-        if (processes[i].state == PROCESS_RUNNING) {
-            printf(" %u    ", processes[i].pid);
-            for (size_t j = 0; j < processes[i].cycles_remaining; ++j) {
+        if (simulator->processes[i].state == PROCESS_RUNNING) {
+            printf(" %u    ", simulator->processes[i].pid);
+            for (size_t j = 0; j < simulator->processes[i].cycles_remaining; ++j) {
                 if ((j % 25) == 0) {
                     printf("|");
                 }
@@ -112,25 +119,22 @@ static void draw_process_table(const Process *processes)
     }
 }
 
-
-int main(int argc, char **argv)
+void Simulator_run(Simulator *simulator)
 {
-    (void) argc;
-    (void) argv;
-
     seed_rand();
 
-    printf("START SIZE: %zu\n", memory);
+    printf("START SIZE: %zu\n", simulator->memory);
 
     Process processes[PROCESS_COUNT] = {{ 0, 0, 0, 0, PROCESS_READY, NULL }};
+    simulator->processes = processes;
 
     for (int i = 0; i < PROCESS_COUNT; ++i) {
-        processes[i].pid = unique_pid(processes);
-        processes[i].cycles = random_cycles();
-        processes[i].size = random_size();
-        printf("PID:    %u\n", processes[i].pid);
-        printf("CYCLES: %u\n", processes[i].cycles);
-        printf("SIZE:   %u\n\n", processes[i].size);
+        simulator->processes[i].pid = unique_pid(simulator->processes);
+        simulator->processes[i].cycles = random_cycles();
+        simulator->processes[i].size = random_size();
+        printf("PID:    %u\n", simulator->processes[i].pid);
+        printf("CYCLES: %u\n", simulator->processes[i].cycles);
+        printf("SIZE:   %u\n\n", simulator->processes[i].size);
     }
 
     // disable cursor
@@ -141,20 +145,20 @@ int main(int argc, char **argv)
 
     while (1) {
         // count the total number of running and complete processes
-        running_count = 0;
-        complete_count = 0;
+        simulator->running_count = 0;
+        simulator->complete_count = 0;
         for (size_t i = 0; i < PROCESS_COUNT; ++i) {
             if (processes[i].state == PROCESS_COMPLETE) {
-                ++complete_count;
+                ++simulator->complete_count;
             }
             else if (processes[i].state == PROCESS_RUNNING) {
-                ++running_count;
+                ++simulator->running_count;
             }
         }
 
         // if we've all processes have completed, exit the program
-        if (complete_count == PROCESS_COUNT) {
-            draw_process_table(processes);
+        if (simulator->complete_count == PROCESS_COUNT) {
+            draw_process_table(simulator);
             break;
         }
 
@@ -164,17 +168,17 @@ int main(int argc, char **argv)
 
             // set all ready processes that will fit in memory to running state
             for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-                if (processes[i].state == PROCESS_READY
-                    && processes[i].size < memory
+                if (simulator->processes[i].state == PROCESS_READY
+                    && simulator->processes[i].size < simulator->memory
                 ) {
-                    processes[i].state = PROCESS_RUNNING;
-                    memory -= processes[i].size;
-                    processes[i].cycles_remaining = processes[i].cycles;
-                    processes[i].data = malloc(processes[i].size);
-                    if (processes[i].data == NULL) {
+                    simulator->processes[i].state = PROCESS_RUNNING;
+                    simulator->memory -= simulator->processes[i].size;
+                    simulator->processes[i].cycles_remaining = simulator->processes[i].cycles;
+                    simulator->processes[i].data = malloc(simulator->processes[i].size);
+                    if (simulator->processes[i].data == NULL) {
                         printf("Error: Failed to allocate "
                                "memory for process %u\n",
-                               processes[i].pid);
+                               simulator->processes[i].pid);
                         break;
                     }
                 }
@@ -183,17 +187,17 @@ int main(int argc, char **argv)
 
         // update running processes
         for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-            if (processes[i].state == PROCESS_RUNNING) {
-                if (processes[i].cycles_remaining == 0) {
-                    processes[i].state = PROCESS_COMPLETE;
-                    memory += processes[i].size;
-                    if (processes[i].data != NULL) {
-                        free(processes[i].data);
-                        processes[i].data = NULL;
+            if (simulator->processes[i].state == PROCESS_RUNNING) {
+                if (simulator->processes[i].cycles_remaining == 0) {
+                    simulator->processes[i].state = PROCESS_COMPLETE;
+                    memory += simulator->processes[i].size;
+                    if (simulator->processes[i].data != NULL) {
+                        free(simulator->processes[i].data);
+                        simulator->processes[i].data = NULL;
                     }
                 }
                 else {
-                    --processes[i].cycles_remaining;
+                    --simulator->processes[i].cycles_remaining;
                 }
             }
         }
@@ -201,7 +205,7 @@ int main(int argc, char **argv)
         // print process table every 25 frames
         if (frame_count == 24) {
             frame_count = 0;
-            draw_process_table(processes);
+            draw_process_table(simulator->processes);
         }
 
         // update counters and sleep 10 milliseconds
@@ -212,6 +216,4 @@ int main(int argc, char **argv)
 
     // re-enable cursor
     printf("\033[?25h");
-
-    return 0;
 }

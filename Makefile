@@ -4,9 +4,9 @@ CFLAGS=-Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith    \
 	   -Wswitch-enum -Wconversion -Wunreachable-code                   \
 	   -std=gnu99 -pedantic -g -msse2
 CC=gcc
-SOURCES=simulator.c util.c
+SOURCES=project2.c simulator.c util.c
 OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=simulator
+EXECUTABLE=project2
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $@
