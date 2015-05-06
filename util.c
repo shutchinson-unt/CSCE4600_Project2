@@ -23,8 +23,8 @@ static int cycle_Sigma8 = 0;
 
 static double random_double(const double min, const double max)
 {
-    double random = (double) rand() / RAND_MAX;
-    return min + random * (max - min);
+    double d = (double) rand() / RAND_MAX;
+    return min + d * (max - min);
 }
 
 void seed_rand(void)
