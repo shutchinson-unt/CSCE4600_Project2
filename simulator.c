@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "util.h"
+#include "mymalloc.h"
 
 
 #define PID_MIN       100
@@ -125,11 +126,6 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
         // set process state to ready,
         // which allows Simulator_run to be fully reentrant
         processes[i].state = PROCESS_READY;
-
-        // DEBUG, REMOVE BEFORE FINAL
-        printf("PID:    %u\n", processes[i].pid);
-        printf("CYCLES: %u\n", processes[i].cycles);
-        printf("SIZE:   %u\n\n", processes[i].size);
     }
 
     memory = initial_memory;
@@ -138,8 +134,10 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
     unsigned int timer = 0;
     unsigned int frame_count = 0;
 
-    // DEBUG, REMOVE BEFORE FINAL
-    printf("START SIZE: %zu\n\n", memory);
+    MemoryPool *memory_pool = NULL;
+    if (use_custom_allocator) {
+        memory_pool = MemoryPool_create(total_memory);
+    }
 
     // disable cursor (improves flickering substantially)
     printf("\033[?25l");
@@ -177,7 +175,7 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                     processes[i].cycles_remaining = processes[i].cycles;
 
                     if (use_custom_allocator) {
-
+                        processes[i].data = my_malloc(memory_pool, processes[i].size);
                     }
                     else {
                         processes[i].data = malloc(processes[i].size);
@@ -189,6 +187,8 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                                processes[i].pid);
                         break;
                     }
+
+                    draw_process_table();
                 }
             }
         }
@@ -201,18 +201,15 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                     memory += processes[i].size;
                     if (processes[i].data != NULL) {
                         if (use_custom_allocator) {
-
+                            my_free(memory_pool,
+                                    processes[i].data,
+                                    processes[i].size);
+                            processes[i].data = NULL;
                         }
                         else {
                             free(processes[i].data);
                             processes[i].data = NULL;
                         }
-                    }
-                    else {
-                        printf("Error: Failed to de-allocate "
-                               "memory for process %u\n",
-                               processes[i].pid);
-                        break;
                     }
                 }
                 else {
@@ -231,6 +228,10 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
         ++timer;
         ++frame_count;
         sleep_ms(10);
+    }
+
+    if (use_custom_allocator) {
+        MemoryPool_destroy(memory_pool);
     }
 
     // re-enable cursor
