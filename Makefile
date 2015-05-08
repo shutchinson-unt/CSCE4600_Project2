@@ -6,7 +6,7 @@ CFLAGS=-Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith    \
 
 CC=gcc
 
-SOURCES_COMMON=simulator.c mymalloc.c util.c
+SOURCES_COMMON=simulator.c mymalloc.c util.c timer.c
 
 # problem 1 solution
 SOURCES_PROB1=problem1.c $(SOURCES_COMMON)

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#define MAGIC_FREE      0xFF
+#define MAGIC_FREE '\0'
 
 
 struct MemoryPool {
@@ -15,16 +15,16 @@ struct MemoryPool {
 
 MemoryPool *MemoryPool_create(const size_t size)
 {
-    MemoryPool *memory_pool = malloc(sizeof(MemoryPool));
-    memory_pool->size = size;
+    MemoryPool *pool = malloc(sizeof(MemoryPool));
+    pool->size = size;
 
-    memory_pool->memory = malloc(size);
+    pool->memory = malloc(size);
 
     for (size_t i = 0; i < size; ++i) {
-        memory_pool->memory[i] = MAGIC_FREE;
+        pool->memory[i] = MAGIC_FREE;
     }
 
-    return memory_pool;
+    return pool;
 }
 
 void MemoryPool_destroy(MemoryPool *pool)
