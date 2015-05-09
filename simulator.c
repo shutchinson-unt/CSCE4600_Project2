@@ -151,10 +151,10 @@ void Simulator_run(size_t initial_memory,
 
 
     printf("INITIAL MEMORY:     %zu\n"
-           "USING CUSTOM ALLOC: %d\n"
-           "PROCESS LIMIT:      %zu\n",
+           "USING CUSTOM ALLOC: %s\n"
+           "PROCESS LIMIT:      %zu\n\n",
            initial_memory,
-           use_custom_allocator,
+           (use_custom_allocator) ? "true" : "false",
            process_limit);
 
 
@@ -282,7 +282,7 @@ void Simulator_run(size_t initial_memory,
                processes[i].malloc_time,
                processes[i].free_time);
     }
-    printf("\nTotal Execution Time: %0.3lf ms\n", total_time);
+    printf("\nTotal Execution Time: %0.3lf ms\n\n", total_time);
 
     // re-enable cursor
     printf("\033[?25h");
