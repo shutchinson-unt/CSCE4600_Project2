@@ -20,6 +20,7 @@ MemoryPool *MemoryPool_create(const size_t size)
 
     pool->memory = malloc(size);
 
+    // initialize pool memory to free state
     for (size_t i = 0; i < size; ++i) {
         pool->memory[i] = MAGIC_FREE;
     }
@@ -43,6 +44,7 @@ void *my_malloc(MemoryPool *pool, const size_t size)
 {
     size_t free_count = 0;
     for (size_t i = 0; i < pool->size; ++i) {
+        // attempt to find a contiguous chunk of free memory
         if (pool->memory[i] == MAGIC_FREE) {
             ++free_count;
         }
@@ -52,9 +54,6 @@ void *my_malloc(MemoryPool *pool, const size_t size)
 
         // if the total size of the current chunk is adequate, return address
         if (free_count == size) {
-            // printf("MALLOC chunk size: %zu, at ADDR: %p\n",
-            //        size,
-            //        &pool->memory[i]);
             return &pool->memory[i];
         }
     }
@@ -66,11 +65,9 @@ void *my_malloc(MemoryPool *pool, const size_t size)
 
 void my_free(MemoryPool *pool, void *memory, const size_t size)
 {
+    // attempt to find the given memory in the pool, and mark it as freed
     for (size_t i = 0; i < pool->size; ++i) {
         if (&pool->memory[i] == memory) {
-            // printf("FREEING chunk size: %zu, at ADDR: %p\n",
-            //        size,
-            //        &pool->memory[i]);
             memset(&pool->memory[i], MAGIC_FREE, size);
             return;
         }

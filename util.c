@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+// static variables for standard distribution
 static int process_sigma1 = 0;
 static int process_sigma2 = 0;
 static int process_sigma3 = 0;
@@ -11,7 +12,6 @@ static int process_sigma5 = 0;
 static int process_sigma6 = 0;
 static int process_sigma7 = 0;
 static int process_sigma8 = 0;
-
 static int cycle_Sigma1 = 0;
 static int cycle_Sigma2 = 0;
 static int cycle_Sigma3 = 0;
@@ -54,6 +54,7 @@ unsigned long random_range(const long max)
 
 void InitSD(void)
 {
+    // zero out
     process_sigma1 = 0;
     process_sigma2 = 0;
     process_sigma3 = 0;
@@ -62,7 +63,6 @@ void InitSD(void)
     process_sigma6 = 0;
     process_sigma7 = 0;
     process_sigma8 = 0;
-
     cycle_Sigma1 = 0;
     cycle_Sigma2 = 0;
     cycle_Sigma3 = 0;

@@ -15,9 +15,6 @@
 #define CYCLES_MIN    50
 #define CYCLES_MAX    550
 #define CYCLES_MEAN   300
-// #define CYCLES_MIN    1000
-// #define CYCLES_MAX    11000
-// #define CYCLES_MEAN   6000
 
 #define SIZE_MIN      100000
 #define SIZE_MAX      300000
@@ -46,6 +43,9 @@ static size_t total_memory = 0;
 
 static size_t running_count = 0;
 static size_t complete_count = 0;
+
+static size_t active_process_count = 0;
+static size_t active_process_limit = 0;
 
 static Process processes[PROCESS_COUNT] = {{ 0, 0, 0, 0, PROCESS_READY, NULL, 0, 0 }};
 
@@ -113,7 +113,9 @@ static void draw_process_table(void)
     }
 }
 
-void Simulator_run(size_t initial_memory, int use_custom_allocator)
+void Simulator_run(size_t initial_memory,
+                   int use_custom_allocator,
+                   size_t process_limit)
 {
     // seed pseudo-random number generator
     seed_rand();
@@ -138,18 +140,31 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
     memory = initial_memory;
     total_memory = initial_memory;
 
+    active_process_count = 0;
+    active_process_limit = process_limit;
+
     unsigned int timer = 0;
     unsigned int frame_count = 0;
-
-    MemoryPool *memory_pool = NULL;
-    if (use_custom_allocator) {
-        memory_pool = MemoryPool_create(total_memory);
-    }
 
     // disable cursor (improves flickering substantially)
     printf("\033[?25l");
 
+
+    printf("INITIAL MEMORY:     %zu\n"
+           "USING CUSTOM ALLOC: %d\n"
+           "PROCESS LIMIT:      %zu\n",
+           initial_memory,
+           use_custom_allocator,
+           process_limit);
+
+
     Timer_start(&start_time);
+
+    // allocate memory pool
+    MemoryPool *memory_pool = NULL;
+    if (use_custom_allocator) {
+        memory_pool = MemoryPool_create(total_memory);
+    }
     while (1) {
         // count the total number of running and complete processes
         running_count = 0;
@@ -175,13 +190,16 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
 
             // set all ready processes that will fit in memory to running state
             for (size_t i = 0; i < PROCESS_COUNT; ++i) {
-                if (processes[i].state == PROCESS_READY
+                if ((active_process_limit == 0 || active_process_count < active_process_limit)
+                    && processes[i].state == PROCESS_READY
                     && processes[i].size < memory
                 ) {
+                    ++active_process_count;
                     processes[i].state = PROCESS_RUNNING;
                     memory -= processes[i].size;
                     processes[i].cycles_remaining = processes[i].cycles;
 
+                    // attempt to allocate process' memory
                     Timer_start(&malloc_start_time);
                     if (use_custom_allocator) {
                         processes[i].data = my_malloc(memory_pool, processes[i].size);
@@ -207,9 +225,13 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
         // update running processes
         for (size_t i = 0; i < PROCESS_COUNT; ++i) {
             if (processes[i].state == PROCESS_RUNNING) {
+                // if the current process is complete, update the system
                 if (processes[i].cycles_remaining == 0) {
+                    --active_process_count;
                     processes[i].state = PROCESS_COMPLETE;
                     memory += processes[i].size;
+
+                    // attempt to free process' memory
                     if (processes[i].data != NULL) {
                         Timer_start(&malloc_start_time);
                         if (use_custom_allocator) {
@@ -243,11 +265,14 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
         ++frame_count;
         sleep_ms(10);
     }
-    double total_time = Timer_stop(start_time, &end_time);
 
+    // deallocate memory pool
     if (use_custom_allocator) {
         MemoryPool_destroy(memory_pool);
     }
+
+    // measure total execution time of simulation
+    double total_time = Timer_stop(start_time, &end_time);
 
     for (size_t i = 0; i < PROCESS_COUNT; ++i) {
         printf("%u, %zu, %zu, %0.3lf, %0.3lf\n",
@@ -257,9 +282,7 @@ void Simulator_run(size_t initial_memory, int use_custom_allocator)
                processes[i].malloc_time,
                processes[i].free_time);
     }
-    printf("\n");
-
-    printf("Total Execution Time: %0.3lf ms\n", total_time);
+    printf("\nTotal Execution Time: %0.3lf ms\n", total_time);
 
     // re-enable cursor
     printf("\033[?25h");
