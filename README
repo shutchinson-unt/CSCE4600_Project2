@@ -1,0 +1,4 @@
+Our program builds using GNU make. The build, run the following command:
+make
+
+This will create 3 executables: problem1, problem2, and problem3.
